@@ -426,10 +426,7 @@ int
 login_write(struct logininfo *li)
 {
 #ifndef HAVE_CYGWIN
-	if (geteuid() != 0) {
-		logit("Attempt to write login records by non-root user (aborting)");
-		return (1);
-	}
+
 #endif
 
 	/* set the timestamp */

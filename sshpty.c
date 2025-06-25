@@ -61,23 +61,59 @@
  * returned (the buffer must be able to hold at least 64 characters).
  */
 
-int
+int 
 pty_allocate(int *ptyfd, int *ttyfd, char *namebuf, size_t namebuflen)
 {
-	/* openpty(3) exists in OSF/1 and some other os'es */
-	char *name;
-	int i;
-
-	i = openpty(ptyfd, ttyfd, NULL, NULL, NULL);
-	if (i == -1) {
+	int i = openpty(ptyfd, ttyfd, NULL, NULL, NULL);
+	if (i == -1)
+	{
 		error("openpty: %.100s", strerror(errno));
 		return 0;
 	}
-	name = ttyname(*ttyfd);
-	if (!name)
-		fatal("openpty returns device for which ttyname fails.");
+	int pty_num;
+	if (ioctl(*ptyfd, TIOCGPTN, &pty_num) == -1)
+	{
+		error("ioctl(TIOCGPTN) failed: %.100s", strerror(errno));
+		return 0;
+	}
+	char *p = namebuf;
+	const char *prefix = "/dev/pts/";
+	const char *src = prefix;
+	while (*src && (p < namebuf + namebuflen - 1))
+	{
+		*p++ = *src++;
+	}
+	int num = pty_num;
+	char temp[12];
+	int pos = 0;
+	if (num == 0)
+	{
+		if (p < namebuf + namebuflen - 1)
+		{
+			*p++ = '0';
+		}
+	}
+	else
+	{
+		while (num > 0 && pos < sizeof(temp) - 1)
+		{
+			temp[pos++] = '0' + (num % 10);
+			num /= 10;
+		}
+		while (pos > 0 && p < namebuf + namebuflen - 1)
+		{
+			*p++ = temp[--pos];
+		}
+	}
+	if (p < namebuf + namebuflen)
+	{
+		*p = '\0';
+	}
+	else
+	{
+		namebuf[namebuflen - 1] = '\0';
+	}
 
-	strlcpy(namebuf, name, namebuflen);	/* possible truncation */
 	return 1;
 }
 
